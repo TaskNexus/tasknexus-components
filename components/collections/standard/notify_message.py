@@ -84,5 +84,6 @@ class NotifyMessageComponent(Component):
     bound_service = NotifyMessageService
     version = '1.0'
     category = 'Standard'
+    icon = 'Bell'
     description = 'Send notification messages to platform users via Telegram, Feishu, etc.'
 

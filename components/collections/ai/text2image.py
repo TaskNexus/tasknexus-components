@@ -92,4 +92,5 @@ class Text2ImageComponent(Component):
     bound_service = Text2ImageService
     version = '1.3'
     category = 'AI'
+    icon = 'Image'
     description = 'Generate images from text prompts using Google Generative AI (Imagen)'

@@ -51,5 +51,5 @@ class TimeDelayComponent(Component):
     bound_service = TimeDelayService
     version = '1.0'
     category = 'Standard'
+    icon = 'Clock'
     description = 'Wait for a specified amount of time (ms)'
-    icon = 'clock' # Assuming frontend supports clock icon or default

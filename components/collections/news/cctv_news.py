@@ -107,6 +107,6 @@ class CCTVNewsComponent(Component):
     bound_service = CCTVNewsService
     version = '1.0'
     category = 'News'
+    icon = 'Newspaper'
     description = '每日新闻联播'
-    icon = 'newspaper'
 

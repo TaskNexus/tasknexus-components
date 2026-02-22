@@ -232,5 +232,5 @@ class NotionSavePageComponent(Component):
     bound_service = NotionSavePageService
     version = '1.0'
     category = 'Document'
+    icon = 'FileText'
     description = '将文本内容保存到 Notion 笔记'
-    icon = 'book'
