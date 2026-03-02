@@ -10,7 +10,6 @@ logger = logging.getLogger('django')
 class NotifyMessageService(Service):
     def execute(self, data, parent_data):
         content = data.get_one_of_inputs('content')
-        platform = data.get_one_of_inputs('platform', 'telegram')
         user_ids = data.get_one_of_inputs('user_ids', [])
         
         # Validate inputs
@@ -22,25 +21,13 @@ class NotifyMessageService(Service):
             data.set_outputs('message', 'No user_ids specified')
             return False
         
-        platform = str(platform).lower().strip()
+        # Send via Feishu
+        from tasks.notifications import send_feishu_message
         
-        if platform == 'telegram':
-            return self._send_telegram(data, content, user_ids)
-        elif platform == 'feishu':
-            data.set_outputs('message', 'Feishu notification is not yet implemented')
-            return False
-        else:
-            data.set_outputs('message', f'Unknown notification platform: {platform}')
-            return False
-    
-    def _send_telegram(self, data, content, user_ids):
-        from agents.telegram import TelegramService
-        
-        service = TelegramService()
-        result = service.send_message_to_users(content=content, user_ids=user_ids)
+        result = send_feishu_message(content=content, user_ids=user_ids)
         
         success_count = result['success_count']
-        total = len(user_ids)
+        total = result['total']
         
         # Set outputs
         if success_count == total:
@@ -57,7 +44,6 @@ class NotifyMessageService(Service):
     def inputs_format(self):
         return [
             self.InputItem(name='Content', key='content', type='string', required=True),
-            self.InputItem(name='Platform', key='platform', type='string', required=True),
             self.InputItem(
                 name='User IDs', 
                 key='user_ids', 
@@ -85,5 +71,4 @@ class NotifyMessageComponent(Component):
     version = '1.0'
     category = 'Standard'
     icon = 'Bell'
-    description = 'Send notification messages to platform users via Telegram, Feishu, etc.'
-
+    description = 'Send notification messages to users via Feishu'
