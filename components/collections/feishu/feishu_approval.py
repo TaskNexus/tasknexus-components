@@ -7,12 +7,11 @@ Approve / Reject buttons, waits for all reviewers to decide, then outputs
 the final result ("approved" or "rejected").
 
 Execution flow:
-  execute() — create FeishuApprovalRecord, send cards, enter schedule wait
-  schedule() — wait for bamboo callback_data; finish when callback carries final result
+  execute() — send cards and initialize in-node state
+  schedule() — consume callback_data repeatedly until all reviewers decide
 """
 import json
 import logging
-import secrets
 
 import requests
 
@@ -48,7 +47,6 @@ def _get_access_token() -> str:
 
 def _build_approval_card(
     content: str,
-    token: str,
     open_id: str,
     callback_node_id: str,
     callback_node_version: str,
@@ -82,7 +80,6 @@ def _build_approval_card(
                             'type': 'callback',
                             'value': {
                                 'action_type': 'feishu_approval',
-                                'token': token,
                                 'decision': '1',
                                 'open_id': open_id,
                                 'node_id': callback_node_id,
@@ -100,7 +97,6 @@ def _build_approval_card(
                             'type': 'callback',
                             'value': {
                                 'action_type': 'feishu_approval',
-                                'token': token,
                                 'decision': '0',
                                 'open_id': open_id,
                                 'node_id': callback_node_id,
@@ -146,11 +142,12 @@ class FeishuApprovalService(Service):
     """
     Pipeline Service — Feishu Approval Node.
 
-    execute(): send cards to all reviewers, save state to DB, enter schedule.
-    schedule(): wait callback_data from bamboo_engine.api.callback and output final result.
+    execute(): send cards and initialize in-node state.
+    schedule(): consume callback_data and finish only when all reviewers decide.
     """
 
     __need_schedule__ = True
+    __multi_callback_enabled__ = True
     interval = None
 
     # ------------------------------------------------------------------ #
@@ -188,23 +185,6 @@ class FeishuApprovalService(Service):
             data.set_outputs('_error', '所选审核成员均未绑定飞书账号')
             return False
 
-        # --- create DB record ---
-        approval_token = secrets.token_hex(16)
-
-        try:
-            from tasks.models import FeishuApprovalRecord
-            record = FeishuApprovalRecord.objects.create(
-                token=approval_token,
-                content=content,
-                reviewer_open_ids=reviewer_open_ids,
-                callback_node_id=self.id,
-                callback_node_version=self.version,
-            )
-        except Exception as e:
-            logger.exception('FeishuApprovalService: failed to create FeishuApprovalRecord')
-            data.set_outputs('_error', f'创建审核记录失败: {e}')
-            return False
-
         # --- send personalised card to each reviewer ---
         try:
             access_token = _get_access_token()
@@ -216,7 +196,6 @@ class FeishuApprovalService(Service):
         for open_id in reviewer_open_ids:
             card = _build_approval_card(
                 content=content,
-                token=approval_token,
                 open_id=open_id,
                 callback_node_id=self.id,
                 callback_node_version=self.version,
@@ -225,14 +204,14 @@ class FeishuApprovalService(Service):
             if msg_id:
                 message_ids[open_id] = msg_id
 
-        # Persist message IDs for later card-update
-        if message_ids:
-            record.message_ids = message_ids
-            record.save(update_fields=['message_ids', 'updated_at'])
+        # Persist state in node outputs for multi-callback schedule
+        data.set_outputs('reviewer_open_ids_json', json.dumps(reviewer_open_ids, ensure_ascii=False))
+        data.set_outputs('message_ids_json', json.dumps(message_ids, ensure_ascii=False))
+        data.set_outputs('decisions_json', json.dumps({}, ensure_ascii=False))
+        data.set_outputs('result', '')
 
         logger.info(
-            f'FeishuApprovalService: sent cards to {len(reviewer_open_ids)} reviewer(s), '
-            f'token={approval_token}'
+            f'FeishuApprovalService: sent cards to {len(reviewer_open_ids)} reviewer(s)'
         )
         return True
 
@@ -244,15 +223,61 @@ class FeishuApprovalService(Service):
             data.set_outputs('_error', '缺少审核回调数据')
             return False
 
-        result = callback_data.get('result')
-        if result not in ('1', '0'):
-            data.set_outputs('_error', '无效的审核回调结果')
+        action_type = callback_data.get('action_type')
+        if action_type != 'feishu_approval':
+            data.set_outputs('_error', f'不支持的回调类型: {action_type}')
             return False
 
+        decision = callback_data.get('decision')
+        if decision not in ('1', '0'):
+            data.set_outputs('_error', f'无效的审核结果: {decision}')
+            return False
+
+        open_id_from_value = callback_data.get('open_id', '')
+        clicker_open_id = callback_data.get('clicker_open_id', '')
+        if clicker_open_id and open_id_from_value and clicker_open_id != open_id_from_value:
+            logger.warning(
+                'FeishuApprovalService: open_id mismatch '
+                f'clicker={clicker_open_id} value={open_id_from_value}'
+            )
+            return True
+
+        effective_open_id = clicker_open_id or open_id_from_value
+        if not effective_open_id:
+            data.set_outputs('_error', '审核回调缺少 open_id')
+            return False
+
+        try:
+            reviewer_open_ids = json.loads(data.get_one_of_outputs('reviewer_open_ids_json', '[]'))
+            decisions = json.loads(data.get_one_of_outputs('decisions_json', '{}'))
+        except json.JSONDecodeError as e:
+            data.set_outputs('_error', f'节点内部状态解析失败: {e}')
+            return False
+
+        if effective_open_id not in reviewer_open_ids:
+            # Ignore unexpected clickers to keep the node alive.
+            logger.warning(
+                'FeishuApprovalService: ignore unexpected reviewer '
+                f'open_id={effective_open_id}'
+            )
+            return True
+
+        # Idempotent for duplicate card clicks
+        if effective_open_id in decisions:
+            return True
+
+        decisions[effective_open_id] = decision
+        data.set_outputs('decisions_json', json.dumps(decisions, ensure_ascii=False))
+
+        if set(decisions.keys()) < set(reviewer_open_ids):
+            # Wait for more reviewer callbacks
+            return True
+
+        result = '0' if any(v == '0' for v in decisions.values()) else '1'
         data.set_outputs('result', result)
+        self.finish_schedule()
         logger.info(
-            'FeishuApprovalService: approval callback complete, '
-            f'result={result}, token={callback_data.get("token", "")}'
+            f'FeishuApprovalService: approval callback complete result={result}'
         )
         return True
 
@@ -285,6 +310,21 @@ class FeishuApprovalService(Service):
             self.OutputItem(
                 name='审核结果',
                 key='result',
+                type='string',
+            ),
+            self.OutputItem(
+                name='审核消息ID映射(JSON)',
+                key='message_ids_json',
+                type='string',
+            ),
+            self.OutputItem(
+                name='审核成员(JSON)',
+                key='reviewer_open_ids_json',
+                type='string',
+            ),
+            self.OutputItem(
+                name='审核决策(JSON)',
+                key='decisions_json',
                 type='string',
             ),
         ]
