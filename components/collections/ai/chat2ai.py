@@ -58,8 +58,9 @@ class Chat2AIService(Service):
 
 
 class Chat2AI(Component):
-    name = 'Chat to AI'
+    name = 'AI对话'
     code = 'chat2ai'
     bound_service = Chat2AIService
     version = '1.0'
     category = 'AI'
+    icon = 'Bot'

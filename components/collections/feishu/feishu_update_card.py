@@ -155,7 +155,7 @@ class FeishuUpdateCardService(Service):
 
 
 class FeishuUpdateCardComponent(Component):
-    name = '飞书卡片更新'
+    name = '消息卡片更新'
     code = 'feishu_update_card'
     bound_service = FeishuUpdateCardService
     version = '1.0'

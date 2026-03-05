@@ -331,7 +331,7 @@ class FeishuApprovalService(Service):
 
 
 class FeishuApprovalComponent(Component):
-    name = '飞书审核'
+    name = '审核'
     code = 'feishu_approval'
     bound_service = FeishuApprovalService
     version = '1.0'

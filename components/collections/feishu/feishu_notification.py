@@ -7,7 +7,7 @@ from components.schemas import ExtendedArraySchema
 logger = logging.getLogger('django')
 
 
-class NotifyMessageService(Service):
+class FeishuNotificationService(Service):
     def execute(self, data, parent_data):
         content = data.get_one_of_inputs('content')
         user_ids = data.get_one_of_inputs('user_ids', [])
@@ -64,11 +64,11 @@ class NotifyMessageService(Service):
         ]
 
 
-class NotifyMessageComponent(Component):
-    name = 'Notify Message'
-    code = 'notify_message'
-    bound_service = NotifyMessageService
+class FeishuNotificationComponent(Component):
+    name = '飞书通知'
+    code = 'feishu_notification'
+    bound_service = FeishuNotificationService
     version = '1.0'
-    category = 'Standard'
+    category = 'Feishu'
     icon = 'Bell'
-    description = 'Send notification messages to users via Feishu'
+    description = '发送飞书通知'

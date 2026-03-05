@@ -515,10 +515,10 @@ class FeishuCreateDocService(Service):
 
 
 class FeishuCreateDocComponent(Component):
-    name = 'Feishu Create Document'
+    name = '知识库文档'
     code = 'feishu_create_doc'
     bound_service = FeishuCreateDocService
     version = '1.0'
-    category = 'Document'
+    category = 'Feishu'
     icon = 'FileText'
     description = '在飞书知识库中创建文档，支持输入多级目录自动创建 (Create Feishu document with multi-level directories)'
