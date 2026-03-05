@@ -1,4 +1,4 @@
 from .create_doc import FeishuCreateDocComponent
-from .approval import FeishuApprovalComponent
+from .feishu_approval import FeishuApprovalComponent
 
 __all__ = ['FeishuCreateDocComponent', 'FeishuApprovalComponent']
