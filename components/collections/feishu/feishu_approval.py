@@ -83,7 +83,7 @@ def _build_approval_card(
                             'value': {
                                 'action_type': 'feishu_approval',
                                 'token': token,
-                                'decision': 'approved',
+                                'decision': '1',
                                 'open_id': open_id,
                                 'node_id': callback_node_id,
                                 'node_version': callback_node_version,
@@ -101,7 +101,7 @@ def _build_approval_card(
                             'value': {
                                 'action_type': 'feishu_approval',
                                 'token': token,
-                                'decision': 'rejected',
+                                'decision': '0',
                                 'open_id': open_id,
                                 'node_id': callback_node_id,
                                 'node_version': callback_node_version,
@@ -245,7 +245,7 @@ class FeishuApprovalService(Service):
             return False
 
         result = callback_data.get('result')
-        if result not in ('approved', 'rejected'):
+        if result not in ('1', '0'):
             data.set_outputs('_error', '无效的审核回调结果')
             return False
 
