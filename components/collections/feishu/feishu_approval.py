@@ -336,7 +336,7 @@ class FeishuApprovalComponent(Component):
     bound_service = FeishuApprovalService
     version = '1.0'
     category = 'Feishu'
-    icon = 'CheckCircle'
+    icon = 'faUserCheck'
     description = (
         '向审核成员发送飞书卡片通知，成员点击通过/不通过后节点完成并输出审核结果。'
         '节点采用回调模式，无需轮询数据库即可等待异步审核。'

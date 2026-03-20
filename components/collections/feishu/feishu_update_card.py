@@ -160,6 +160,6 @@ class FeishuUpdateCardComponent(Component):
     bound_service = FeishuUpdateCardService
     version = '1.0'
     category = 'Feishu'
-    icon = 'RefreshCw'
+    icon = 'faArrowsRotate'
     description = '根据 message_id 更新飞书交互卡片状态，通常接在飞书审核节点后执行。'
 

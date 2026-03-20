@@ -70,5 +70,5 @@ class FeishuNotificationComponent(Component):
     bound_service = FeishuNotificationService
     version = '1.0'
     category = 'Feishu'
-    icon = 'Bell'
+    icon = 'faVolume'
     description = '发送飞书通知'

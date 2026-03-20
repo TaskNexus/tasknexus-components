@@ -520,5 +520,5 @@ class FeishuCreateDocComponent(Component):
     bound_service = FeishuCreateDocService
     version = '1.0'
     category = 'Feishu'
-    icon = 'FileText'
+    icon = 'faFileLines'
     description = '在飞书知识库中创建文档，支持输入多级目录自动创建 (Create Feishu document with multi-level directories)'

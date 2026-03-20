@@ -63,4 +63,4 @@ class Chat2AI(Component):
     bound_service = Chat2AIService
     version = '1.0'
     category = 'AI'
-    icon = 'Bot'
+    icon = 'faRobot'
